@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "34166520349",
+    "project_id": "appsua-22f25",
+    "storage_bucket": "appsua-22f25.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:34166520349:android:e342fdabd731a5ea84e4f4",
+        "android_client_info": {
+          "package_name": "com.example.appshopsua"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBbcQuqbgl4n57k7EoNDZwIIUgNkWexx4g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
