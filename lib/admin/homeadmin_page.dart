@@ -4,6 +4,8 @@ import 'package:appshopsua/admin/employee/listemployee.dart';
 import 'package:appshopsua/admin/khuyenmai/list_promotion.dart';
 import 'package:appshopsua/admin/order/adminorderpage.dart';
 import 'package:appshopsua/admin/product/listproduct.dart';
+import 'package:appshopsua/admin/revenue/thongke_page.dart';
+import 'package:appshopsua/admin/thongke.dart';
 import 'package:appshopsua/login_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -199,11 +201,37 @@ class _AdminHomePageState extends State<AdminHomePage> {
               },
 
             ),
+            _buildDrawerItem(
+              icon: Icons.bar_chart,
+              title: 'Thống kê',
+              index: 8,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ThongKePage()),
+                );
+              },
+            ),
+
+            // _buildDrawerItem(
+            //   icon: Icons.logout,
+            //   title: 'Thống kê',
+            //   index: 8,
+            //   onTap: () async {
+            //     await FirebaseAuth.instance.signOut();
+            //     Navigator.pushAndRemoveUntil(
+            //       context,
+            //       MaterialPageRoute(builder: (context) => const ThongKePage()),
+            //           (route) => false,
+            //     );
+            //   },
+            //
+            // ),
             const Divider(height: 32),
             _buildDrawerItem(
               icon: Icons.logout,
               title: 'Đăng xuất',
-              index: 8,
+              index: 9,
               onTap: () async {
                 await FirebaseAuth.instance.signOut();
                 Navigator.pushAndRemoveUntil(
@@ -381,34 +409,45 @@ class _AdminHomePageState extends State<AdminHomePage> {
                   ),
                   const SizedBox(height: 20),
                   // Placeholder for chart
+                  // Container(
+                  //   height: 200,
+                  //   decoration: BoxDecoration(
+                  //     color: lightBlue,
+                  //     borderRadius: BorderRadius.circular(12),
+                  //     border: Border.all(color: mainBlue.withOpacity(0.2)),
+                  //   ),
+                  //   child: Center(
+                  //     child: Column(
+                  //       mainAxisAlignment: MainAxisAlignment.center,
+                  //       children: [
+                  //         Icon(
+                  //           Icons.bar_chart_outlined,
+                  //           size: 48,
+                  //           color: mainBlue.withOpacity(0.5),
+                  //         ),
+                  //         const SizedBox(height: 8),
+                  //         Text(
+                  //           'Biểu đồ doanh thu',
+                  //           style: TextStyle(
+                  //             color: mainBlue.withOpacity(0.7),
+                  //             fontSize: 14,
+                  //           ),
+                  //         ),
+                  //       ],
+                  //     ),
+                  //   ),
+                  // ),
                   Container(
                     height: 200,
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: lightBlue,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: mainBlue.withOpacity(0.2)),
                     ),
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.bar_chart_outlined,
-                            size: 48,
-                            color: mainBlue.withOpacity(0.5),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Biểu đồ doanh thu',
-                            style: TextStyle(
-                              color: mainBlue.withOpacity(0.7),
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    child: const ThongKePage(),
                   ),
+
                   const SizedBox(height: 16),
                   const Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
