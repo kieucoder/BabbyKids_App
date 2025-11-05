@@ -248,7 +248,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
         const SnackBar(content: Text('Giỏ hàng trống!')),
       );
       return;
+
+
     }
+    
+
 
     if (_customerInfo.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
