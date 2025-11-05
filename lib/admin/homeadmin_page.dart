@@ -1,7 +1,6 @@
 import 'package:appshopsua/admin/brand/listbrand.dart';
 import 'package:appshopsua/admin/category/dsdanhmuc_page.dart';
 import 'package:appshopsua/admin/employee/listemployee.dart';
-import 'package:appshopsua/admin/khuyenmai/add_promotion.dart';
 import 'package:appshopsua/admin/khuyenmai/list_promotion.dart';
 import 'package:appshopsua/admin/order/adminorderpage.dart';
 import 'package:appshopsua/admin/product/listproduct.dart';
