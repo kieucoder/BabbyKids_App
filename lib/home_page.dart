@@ -190,7 +190,7 @@ class _HomeUIPageState extends State<HomePage> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("✅ Đã thêm vào giỏ hàng tạm!"),
+          content: Text("Đã thêm vào giỏ hàng tạm!"),
           backgroundColor: Colors.pinkAccent,
         ),
       );
@@ -494,7 +494,7 @@ class _HomeUIPageState extends State<HomePage> {
               context,
               MaterialPageRoute(
                 builder: (context) => ProductDetailPage(
-
+                  idKhachHang: widget.idKhachHang,
                   idSanPham: sanPham.id,
                   tenSP: sanPham['TenSanPham'],
                   gia: (sanPham['Gia'] as num).toDouble(),
@@ -643,13 +643,6 @@ class _HomeUIPageState extends State<HomePage> {
                                 'HinhAnh': sanPham['HinhAnh'],
 
                               });
-                              // _addToCart({
-                              //   'IdSanPham': sanPham['IdSanPham'],
-                              //   'TenSanPham': sanPham['TenSanPham'],
-                              //   'Gia': sanPham['Gia'],
-                              //   'HinhAnh': sanPham['HinhAnh'],
-                              //   'IdKhuyenMai': sanPham['IdKhuyenMai'],
-                              // });
                             },
                             style: OutlinedButton.styleFrom(
                               side: const BorderSide(color: Colors.pinkAccent),

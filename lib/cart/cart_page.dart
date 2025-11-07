@@ -122,7 +122,8 @@ class _CartPageState extends State<CartPage> {
   }
 
 // Cập nhật số lượng trong session (dùng IdSanPham)
-  Future<void> _updateQuantity(String idSanPham, int soLuong) async {
+  // Tăng số lượng
+  Future<void> _increaseQuantity(String idSanPham) async {
     final prefs = await SharedPreferences.getInstance();
     final cartKey = 'cart_${widget.idKhachHang}';
     final raw = prefs.getString(cartKey);
@@ -132,11 +133,8 @@ class _CartPageState extends State<CartPage> {
     final idx = cart.indexWhere((it) => it['IdSanPham'] == idSanPham);
     if (idx == -1) return;
 
-    if (soLuong <= 0) {
-      cart.removeAt(idx);
-    } else {
-      cart[idx]['SoLuong'] = soLuong;
-    }
+    int soLuong = (cart[idx]['SoLuong'] as int?) ?? 1;
+    cart[idx]['SoLuong'] = soLuong + 1;
 
     await prefs.setString(cartKey, json.encode(cart));
     setState(() {
@@ -145,61 +143,28 @@ class _CartPageState extends State<CartPage> {
     });
   }
 
-  //giảm số lượng sản phẩm trong session
-  Future<void> _decreaseQuantity(String idSanPham) async {
-    try {
-      final userId = widget.idKhachHang;
-      if (userId == null || userId.isEmpty) return;
+// Giảm số lượng (không xóa)
+  Future<void> _decreaseQuantitySafe(String idSanPham) async {
+    final prefs = await SharedPreferences.getInstance();
+    final cartKey = 'cart_${widget.idKhachHang}';
+    final raw = prefs.getString(cartKey);
+    if (raw == null) return;
 
-      final prefs = await SharedPreferences.getInstance();
-      final cartKey = 'cart_$userId';
+    List<Map<String, dynamic>> cart = List<Map<String, dynamic>>.from(json.decode(raw));
+    final idx = cart.indexWhere((it) => it['IdSanPham'] == idSanPham); // ⚠ phải giống key
+    if (idx == -1) return;
 
-      final existingData = prefs.getString(cartKey);
-      if (existingData == null) return;
+    int soLuong = (cart[idx]['SoLuong'] as int?) ?? 1;
+    cart[idx]['SoLuong'] = soLuong > 1 ? soLuong - 1 : 1;
 
-      List<Map<String, dynamic>> cart =
-      List<Map<String, dynamic>>.from(json.decode(existingData));
-
-      // Tìm sản phẩm theo IdSanPham
-      int index = cart.indexWhere((item) => item['IdSanPham'] == idSanPham);
-      if (index == -1) return;
-
-      int soLuong = (cart[index]['SoLuong'] ?? 1);
-
-      if (soLuong > 1) {
-        // Giảm 1 nếu số lượng còn >1
-        cart[index]['SoLuong'] = soLuong - 1;
-      } else {
-        // Nếu còn 1 thì hỏi xoá
-        bool? confirm = await showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text("Xóa sản phẩm"),
-            content: const Text("Bạn có muốn xóa sản phẩm này khỏi giỏ hàng không?"),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Hủy")),
-              TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Xóa")),
-            ],
-          ),
-        );
-
-        if (confirm == true) {
-          cart.removeAt(index);
-        }
-      }
-
-      // Lưu lại giỏ sau khi cập nhật
-      await prefs.setString(cartKey, json.encode(cart));
-
-      // Cập nhật lại UI
-      setState(() {
-        _cartItems = cart;
-        _calculateTotalPrice();
-      });
-    } catch (e) {
-      print("❌ Lỗi khi giảm số lượng: $e");
-    }
+    await prefs.setString(cartKey, json.encode(cart));
+    setState(() {
+      _cartItems = cart;
+      _calculateTotalPrice();
+    });
   }
+
+
 
 // Xóa 1 sản phẩm trong session (dùng IdSanPham)
   Future<void> _removeItem(String idSanPham) async {
@@ -638,11 +603,6 @@ class _CartPageState extends State<CartPage> {
 
 
   Widget _buildProductItem(Map<String, dynamic> item, int index) {
-    // double gia = (item['Gia'] as num?)?.toDouble() ?? 0;
-    // double phanTram = (item['PhanTramGiam'] as num?)?.toDouble() ?? 0;
-    // int soLuong = (item['SoLuong'] as int?) ?? 1;
-
-
     double gia = (item['Gia'] as num?)?.toDouble() ?? 0;
     double giaGoc = (item['GiaGoc'] as num?)?.toDouble() ?? gia;
     double phanTram = (item['PhanTramGiam'] as num?)?.toDouble() ?? 0;
@@ -892,20 +852,11 @@ class _CartPageState extends State<CartPage> {
                     ),
 
                     // NÚT ĐIỀU CHỈNH SỐ LƯỢNG
-                    // === NÚT ĐIỀU CHỈNH SỐ LƯỢNG + XÓA SẢN PHẨM ===
-                    // === NÚT ĐIỀU CHỈNH SỐ LƯỢNG + XÓA SẢN PHẨM (KÍCH THƯỚC TO HƠN) ===
+                    // === NÚT ĐIỀU CHỈNH SỐ LƯỢNG + XÓA SẢN PHẨM ==
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // --- Nút xóa sản phẩm ---
-                        // IconButton(
-                        //   onPressed: () => _removeItem(item['id']),
-                        //   icon: const Icon(Icons.close_rounded, size: 18, color: Colors.grey),
-                        //   padding: EdgeInsets.zero,
-                        //   constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                        // ),
-
                         // --- Nhóm nút tăng giảm số lượng ---
                         Container(
                           margin: const EdgeInsets.only(top: 6),
@@ -927,12 +878,12 @@ class _CartPageState extends State<CartPage> {
                             children: [
                               // Nút giảm
                               InkWell(
-                                onTap: soLuong > 1 ? () => _updateQuantity(item['id'], soLuong - 1) : null,
+                                onTap:  () => _decreaseQuantitySafe(item['id']),
                                 borderRadius: BorderRadius.circular(12),
                                 child: Container(
                                   padding: const EdgeInsets.all(6),
                                   decoration: BoxDecoration(
-                                    color: soLuong > 1 ? const Color(0xFFFF6B9D) : Colors.grey.shade300,
+                                    color: Colors.grey.shade300,
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Icon(Icons.remove, size: 22, color: Colors.white),
@@ -955,7 +906,7 @@ class _CartPageState extends State<CartPage> {
 
                               // Nút tăng
                               InkWell(
-                                onTap: () => _updateQuantity(item['id'], soLuong + 1),
+                                onTap: () => _increaseQuantity(item['IdSanPham']),
                                 borderRadius: BorderRadius.circular(12),
                                 child: Container(
                                   padding: const EdgeInsets.all(6),

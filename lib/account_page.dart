@@ -1,6 +1,5 @@
-
-import 'package:appshopsua/cart/checkoutpage.dart';
 import 'package:appshopsua/cart/orderhistory.dart';
+import 'package:appshopsua/favorite_page.dart';
 import 'package:appshopsua/login_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -560,6 +559,14 @@ class _AccountPageState extends State<AccountPage> {
                               title: 'Sản phẩm yêu thích',
                               subtitle: 'Xem danh sách sản phẩm đã thích',
                               onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => FavoritePage(
+                                      idKhachHang: widget.idKhachHang,
+                                    ),
+                                  ),
+                                );
                                 // Navigate to favorites page
 
                                 // Navigator.push(

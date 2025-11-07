@@ -1,4 +1,3 @@
-
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -248,11 +247,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
         const SnackBar(content: Text('Giỏ hàng trống!')),
       );
       return;
-
-
     }
-    
-
 
     if (_customerInfo.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
