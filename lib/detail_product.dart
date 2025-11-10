@@ -57,6 +57,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   String? _userId;
   String? _idYeuThich;
   bool _loadingKhuyenMai = true;
+  bool _daMua = false; // mặc định chưa mua
+
 
   //thêm dữ liệu khuyến mãi
   List<QueryDocumentSnapshot> _khuyenMaiDocs = [];
@@ -71,7 +73,17 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     _layThongTinNguoiDung();
     _loadReviews();
     _loadKhuyenMai();
+    _checkDaMua(); // Thêm dòng này
   }
+
+  // Kiểm tra đã mua hay chưa
+  Future<void> _checkDaMua() async {
+    bool daMua = await _kiemTraDonHangDaGiao();
+    setState(() {
+      _daMua = daMua;
+    });
+  }
+
 
   Future<void> _getCurrentUser() async {
     final user = FirebaseAuth.instance.currentUser;
@@ -401,23 +413,35 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   //kiêểm tra đơn hàng mua chua
   Future<bool> _kiemTraDonHangDaGiao() async {
     try {
-      final query = await FirebaseFirestore.instance
+      // 1️⃣ Lấy tất cả đơn hàng đã giao của khách
+      final donHangQuery = await FirebaseFirestore.instance
           .collection('donhang')
           .where('IdKhachHang', isEqualTo: widget.idKhachHang)
           .where('TrangThai', isEqualTo: 'Đã giao')
           .get();
 
-      for (var doc in query.docs) {
-        final data = doc.data();
-        final sanPhamList = data['SanPham'] as List<dynamic>?;
+      // Nếu không có đơn hàng nào đã giao -> chưa mua
+      if (donHangQuery.docs.isEmpty) return false;
 
-        if (sanPhamList != null) {
-          final daMua = sanPhamList.any(
-                (sp) => sp['IdSanPham'] == widget.idSanPham,
-          );
-          if (daMua) return true;
+      // 2️⃣ Duyệt từng đơn hàng để check chi tiết sản phẩm
+      for (var doc in donHangQuery.docs) {
+        final maDonHang = doc.data()['MaDonHang'];
+        if (maDonHang == null) continue;
+
+        // Query chi tiết đơn hàng
+        final chiTietQuery = await FirebaseFirestore.instance
+            .collection('chitietdonhang')
+            .where('MaDonHang', isEqualTo: maDonHang)
+            .where('IdSanPham', isEqualTo: widget.idSanPham)
+            .get();
+
+        if (chiTietQuery.docs.isNotEmpty) {
+          // Sản phẩm này có trong đơn đã giao -> đã mua
+          return true;
         }
       }
+
+      // Không tìm thấy sản phẩm nào -> chưa mua
       return false;
     } catch (e) {
       debugPrint("Lỗi kiểm tra đơn hàng: $e");
@@ -429,6 +453,18 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   // ==================== ĐÁNH GIÁ ====================
   Future<void> _submitReview() async {
     try {
+
+      if (!_daMua) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Bạn chỉ có thể đánh giá sản phẩm sau khi mua và nhận hàng."),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+
       final name = _userName ?? _nameController.text.trim();
       final email = _userEmail ?? _emailController.text.trim();
       final comment = _commentController.text.trim();
@@ -694,102 +730,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     );
   }
 
-  // Widget _buildRatingForm() {
-  //   return Container(
-  //     margin: const EdgeInsets.symmetric(horizontal: 16),
-  //     padding: const EdgeInsets.all(20),
-  //     decoration: BoxDecoration(
-  //       color: Colors.white,
-  //       borderRadius: BorderRadius.circular(20),
-  //       boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 6)],
-  //     ),
-  //     child: Column(
-  //       crossAxisAlignment: CrossAxisAlignment.start,
-  //       children: [
-  //         const Text("Đánh giá sản phẩm", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-  //         const SizedBox(height: 12),
-  //         Row(
-  //           children: List.generate(
-  //             5,
-  //                 (index) => IconButton(
-  //               onPressed: () => setState(() => _userRating = index + 1.0),
-  //               icon: Icon(Icons.star,
-  //                   color: _userRating >= index + 1 ? Colors.orange : Colors.grey[300], size: 28),
-  //             ),
-  //           ),
-  //         ),
-  //         const SizedBox(height: 12),
-  //         TextField(
-  //           controller: _commentController,
-  //           maxLines: 3,
-  //           decoration: const InputDecoration(
-  //             labelText: "Nhập bình luận",
-  //             border: OutlineInputBorder(),
-  //           ),
-  //         ),
-  //         const SizedBox(height: 12),
-  //         SizedBox(
-  //           width: double.infinity,
-  //           child: ElevatedButton(
-  //             onPressed: _submitReview,
-  //             style: ElevatedButton.styleFrom(
-  //               backgroundColor: Colors.pinkAccent,
-  //               foregroundColor: Colors.white,
-  //               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-  //             ),
-  //             child: const Text("Gửi đánh giá"),
-  //           ),
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  // }
-  //
-  // Widget _buildReviewList() {
-  //   if (_reviews.isEmpty) {
-  //     return const Center(
-  //       child: Padding(
-  //         padding: EdgeInsets.symmetric(vertical: 16),
-  //         child: Text("Chưa có đánh giá nào."),
-  //       ),
-  //     );
-  //   }
-  //
-  //   return ListView.builder(
-  //     physics: const NeverScrollableScrollPhysics(),
-  //     shrinkWrap: true,
-  //     itemCount: _reviews.length,
-  //     itemBuilder: (context, index) {
-  //       final review = _reviews[index];
-  //       final rating = review['SoSao'] ?? 0;
-  //       final comment = review['BinhLuan'] ?? '';
-  //       final name = review['TenNguoiDanhGia'] ?? '';
-  //       final timestamp = review['NgayDanhGia'] as Timestamp?;
-  //       final date = timestamp != null ? timestamp.toDate() : DateTime.now();
-  //
-  //       return Card(
-  //         margin: const EdgeInsets.symmetric(vertical: 8),
-  //         child: ListTile(
-  //           title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-  //           subtitle: Column(
-  //             crossAxisAlignment: CrossAxisAlignment.start,
-  //             children: [
-  //               Row(
-  //                 children: List.generate(5, (i) => Icon(Icons.star,
-  //                     color: i < rating ? Colors.orange : Colors.grey[300], size: 16)),
-  //               ),
-  //               const SizedBox(height: 4),
-  //               Text(comment),
-  //               const SizedBox(height: 4),
-  //               Text(DateFormat('dd/MM/yyyy').format(date),
-  //                   style: const TextStyle(fontSize: 12, color: Colors.grey)),
-  //             ],
-  //           ),
-  //         ),
-  //       );
-  //     },
-  //   );
-  // }
 
   Widget _buildRatingForm() {
     return Container(

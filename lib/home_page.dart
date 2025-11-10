@@ -105,91 +105,7 @@ class _HomeUIPageState extends State<HomePage> {
     }
     return originalPrice;
   }
-  // Future<void> _addToCart(Map<String, dynamic> sanPham) async {
-  //   try {
-  //     final userId = widget.idKhachHang;
-  //
-  //     if (userId == null || userId.isEmpty) {
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         const SnackBar(content: Text("Vui lòng đăng nhập để mua hàng")),
-  //       );
-  //       return;
-  //     }
-  //
-  //     // Lấy SharedPreferences
-  //     final prefs = await SharedPreferences.getInstance();
-  //     final cartKey = 'cart_$userId'; // mỗi khách hàng 1 key riêng
-  //
-  //     // Lấy giỏ hiện tại (nếu có)
-  //     List<Map<String, dynamic>> cart = [];
-  //     final existingData = prefs.getString(cartKey);
-  //     if (existingData != null) {
-  //       cart = List<Map<String, dynamic>>.from(json.decode(existingData));
-  //     }
-  //
-  //     // Lấy thông tin sản phẩm
-  //     final productId = sanPham['IdSanPham'] ?? sanPham['id'] ?? '';
-  //     if (productId.isEmpty) {
-  //       print("❌ Không tìm thấy ID sản phẩm!");
-  //       return;
-  //     }
-  //
-  //     // Xử lý khuyến mãi
-  //     String? idKhuyenMai = sanPham["IdKhuyenMai"]?.toString();
-  //     Map<String, dynamic>? km = idKhuyenMai != null && idKhuyenMai.isNotEmpty
-  //         ? _getKhuyenMaiForProduct(idKhuyenMai)
-  //         : null;
-  //
-  //     double phanTramGiam = 0;
-  //     var giamRaw = km?["PhanTramGiam"];
-  //     if (giamRaw is int) phanTramGiam = giamRaw.toDouble();
-  //     else if (giamRaw is double) phanTramGiam = giamRaw;
-  //     else if (giamRaw is String) phanTramGiam = double.tryParse(giamRaw) ?? 0;
-  //
-  //     double giaGoc = 0;
-  //     var giaRaw = sanPham["Gia"];
-  //     if (giaRaw is int) giaGoc = giaRaw.toDouble();
-  //     else if (giaRaw is double) giaGoc = giaRaw;
-  //     else if (giaRaw is String) giaGoc = double.tryParse(giaRaw) ?? 0;
-  //
-  //     double giaSauGiam = _calculateDiscountedPrice(giaGoc, phanTramGiam);
-  //
-  //     // Tìm sản phẩm trong giỏ
-  //     int index = cart.indexWhere((item) => item['IdSanPham'] == productId);
-  //
-  //     if (index != -1) {
-  //       // Cập nhật số lượng
-  //       cart[index]['SoLuong'] = (cart[index]['SoLuong'] ?? 1) + 1;
-  //     } else {
-  //       // Thêm mới
-  //       cart.add({
-  //         'IdSanPham': productId,
-  //         'TenSanPham': sanPham['TenSanPham'] ?? '',
-  //         'HinhAnh': sanPham['HinhAnh'] ?? '',
-  //         'GiaGoc': giaGoc,
-  //         'GiaSauGiam': giaSauGiam,
-  //         'PhanTramGiam': phanTramGiam,
-  //         'IdKhuyenMai': idKhuyenMai,
-  //         'SoLuong': 1,
-  //       });
-  //     }
-  //
-  //     // Lưu lại vào SharedPreferences
-  //     await prefs.setString(cartKey, json.encode(cart));
-  //
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       const SnackBar(
-  //         content: Text("Đã thêm vào giỏ hàng tạm!"),
-  //         backgroundColor: Colors.pinkAccent,
-  //       ),
-  //     );
-  //   } catch (e) {
-  //     print("❌ Lỗi khi thêm vào giỏ hàng: $e");
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(content: Text("Lỗi khi thêm sản phẩm vào giỏ: $e")),
-  //     );
-  //   }
-  // }
+
   Future<void> _addToCart(Map<String, dynamic> sanPham) async {
     try {
       final userId = widget.idKhachHang;
@@ -459,7 +375,7 @@ class _HomeUIPageState extends State<HomePage> {
   Widget _buildCategoryList() {
     return
       Container(
-        height: 130,
+        height: 100,
         padding: const EdgeInsets.symmetric(horizontal: 8),
         child: _loadingDanhMuc
             ? const Center(child: CircularProgressIndicator())
@@ -479,8 +395,8 @@ class _HomeUIPageState extends State<HomePage> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Container(
-                      width: 90,
-                      height: 90,
+                      width: 50,
+                      height: 50,
                       decoration: BoxDecoration(
                         color: Colors.grey.shade200,
                         borderRadius: BorderRadius.circular(12),
@@ -518,8 +434,8 @@ class _HomeUIPageState extends State<HomePage> {
   Widget _buildFlashSale() {
     return Container(
       color: Colors.pink.shade50,
-      padding: const EdgeInsets.all(12),
-      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), // giảm padding
+
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: const [
@@ -534,6 +450,7 @@ class _HomeUIPageState extends State<HomePage> {
       ),
     );
   }
+
   Widget _buildProductGrid() {
     return _loadingSanPham
         ? const Center(child: CircularProgressIndicator())
