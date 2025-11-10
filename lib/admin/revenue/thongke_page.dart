@@ -25,6 +25,63 @@ class _ThongKePageState extends State<ThongKePage> {
     _layDuLieuDoanhThu();
   }
 
+
+  Future<Map<String, dynamic>> getAdminSummary() async {
+    final snapshot = await FirebaseFirestore.instance.collection('donhang').get();
+
+    double todayRevenue = 0;
+    double weekRevenue = 0;
+    double monthRevenue = 0;
+    Map<String, int> productCount = {};
+    final now = DateTime.now();
+    final weekDay = now.weekday;
+    final startOfWeek = now.subtract(Duration(days: weekDay - 1));
+    final endOfWeek = startOfWeek.add(Duration(days: 6));
+
+    for (var doc in snapshot.docs) {
+      final data = doc.data();
+      final tongTien = (data['TongTien'] ?? 0).toDouble();
+      final date = (data['NgayDat'] as Timestamp?)?.toDate();
+      if (date == null) continue;
+
+      if (date.year == now.year && date.month == now.month && date.day == now.day) {
+        todayRevenue += tongTien;
+      }
+      if (!date.isBefore(startOfWeek) && !date.isAfter(endOfWeek)) {
+        weekRevenue += tongTien;
+      }
+      if (date.year == now.year && date.month == now.month) {
+        monthRevenue += tongTien;
+      }
+
+      final sanPhamList = (data['SanPham'] as List?) ?? [];
+      for (var sp in sanPhamList) {
+        String name = sp['TenSanPham'] ?? "Unknown";
+        productCount[name] = (productCount[name] ?? 0) + 1;
+      }
+    }
+
+    // Sản phẩm bán chạy / ít nhất
+    String topProduct = "Chưa có";
+    String leastProduct = "Chưa có";
+    if (productCount.isNotEmpty) {
+      final sorted = productCount.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+      topProduct = sorted.first.key;
+      leastProduct = sorted.last.key;
+    }
+
+    return {
+      "todayRevenue": todayRevenue,
+      "weekRevenue": weekRevenue,
+      "monthRevenue": monthRevenue,
+      "topProduct": topProduct,
+      "leastProduct": leastProduct,
+      "productCount": productCount,
+      "totalOrders": snapshot.docs.length,
+    };
+  }
+
+
   Future<void> _layDuLieuDoanhThu() async {
     try {
       final snapshot = await FirebaseFirestore.instance.collection('donhang').get();

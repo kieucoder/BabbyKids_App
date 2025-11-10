@@ -33,6 +33,10 @@ dependencies:
   fl_chart: ^0.66.0
 
 
+  printing: ^5.11.0
+  pdf: ^3.11.0
+
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -52,5 +56,6 @@ flutter:
     - assets/banner2.png
     - assets/banner3.png
     - assets/banner4.png
+    -
 
   uses-material-design: true

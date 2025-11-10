@@ -1,14 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:appshopsua/account/account_page.dart';
+import 'package:appshopsua/cart/cart_page.dart';
 import 'package:appshopsua/chatbox/chat_screen.dart';
 import 'package:appshopsua/detail_product.dart';
+import 'package:appshopsua/search_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'cart/cart_page.dart';
 import 'package:intl/intl.dart';
-
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HomePage extends StatefulWidget {
   final String idKhachHang;
@@ -19,26 +19,27 @@ class HomePage extends StatefulWidget {
     required this.idKhachHang,
     required this.userData,
   }) : super(key: key);
+
   @override
-  _HomeUIPageState createState() => _HomeUIPageState();
+  _HomePageState createState() => _HomePageState();
 }
+
 final formatCurrency = NumberFormat("#,###", "vi_VN");
-class _HomeUIPageState extends State<HomePage> {
+
+class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
   int _currentBannerIndex = 0;
   Timer? _timer;
 
-
-  //thêm dữ liệu khuyến mãi
   List<QueryDocumentSnapshot> _khuyenMaiDocs = [];
-  bool _loadingKhuyenMai = true;
-
-  // Dữ liệu Firebase lưu trong state để không reload
   List<QueryDocumentSnapshot> _danhMucDocs = [];
   List<QueryDocumentSnapshot> _sanPhamDocs = [];
+
+  bool _loadingKhuyenMai = true;
   bool _loadingDanhMuc = true;
   bool _loadingSanPham = true;
 
+  List<Map<String, dynamic>> _allProducts = [];
 
   final List<String> banners = [
     "assets/banner1.png",
@@ -50,35 +51,23 @@ class _HomeUIPageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    _loadData();
+    _startBannerTimer();
+  }
 
-    FirebaseFirestore.instance.collection("sanpham").get().then((snapshot) {
-      setState(() {
-        _sanPhamDocs = snapshot.docs;
-        _loadingSanPham = false;
-      });
-      // 👉 Gọi kiểm tra tự động
-      _fixMissingKhuyenMaiField();
-    });
-
-    // Banner tự động chạy
-    _timer = Timer.periodic(Duration(seconds: 3), (timer) {
+  void _startBannerTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
       setState(() {
         _currentBannerIndex = (_currentBannerIndex + 1) % banners.length;
       });
     });
+  }
 
+  Future<void> _loadData() async {
+    final firestore = FirebaseFirestore.instance;
 
-    // Lấy dữ liệu khuyến mãi
-    FirebaseFirestore.instance.collection("khuyenmai").get().then((snapshot) {
-      setState(() {
-        _khuyenMaiDocs = snapshot.docs;
-        _loadingKhuyenMai = false;
-      });
-    });
-
-
-    // Lấy dữ liệu danh mục 1 lần
-    FirebaseFirestore.instance
+    // Load danh mục
+    firestore
         .collection("danhmuc")
         .where("TrangThai", isEqualTo: "Hoạt Động")
         .get()
@@ -89,151 +78,37 @@ class _HomeUIPageState extends State<HomePage> {
       });
     });
 
-    // Lấy dữ liệu sản phẩm 1 lần
-    FirebaseFirestore.instance.collection("sanpham").get().then((snapshot) {
+    // Load khuyến mãi
+    firestore.collection("khuyenmai").get().then((snapshot) {
+      setState(() {
+        _khuyenMaiDocs = snapshot.docs;
+        _loadingKhuyenMai = false;
+      });
+    });
+
+    // Load sản phẩm
+    firestore.collection("sanpham").get().then((snapshot) {
+      List<Map<String, dynamic>> products = snapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'IdSanPham': data['IdSanPham'] ?? doc.id,
+          'TenSanPham': data['TenSanPham'] ?? '',
+          'HinhAnh': data['HinhAnh'] ?? '',
+          'Gia': (data['Gia'] ?? 0).toDouble(),
+          'IdKhuyenMai': data['IdKhuyenMai'] ?? '',
+          'PhanTramGiam': (data['PhanTramGiam'] ?? 0).toDouble(),
+          'GiaSauGiam': (data['Gia'] ?? 0).toDouble() -
+              ((data['Gia'] ?? 0) * ((data['PhanTramGiam'] ?? 0) / 100)),
+        };
+      }).toList();
+
       setState(() {
         _sanPhamDocs = snapshot.docs;
+        _allProducts = products;
         _loadingSanPham = false;
       });
     });
   }
-
-// Thêm hàm này vào class _HomeUIPageState
-  double _calculateDiscountedPrice(double originalPrice, double discountPercent) {
-    if (discountPercent > 0) {
-      return originalPrice * (1 - discountPercent / 100);
-    }
-    return originalPrice;
-  }
-
-  Future<void> _addToCart(Map<String, dynamic> sanPham) async {
-    try {
-      final userId = widget.idKhachHang;
-
-      // Kiểm tra đăng nhập
-      if (userId == null || userId.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Vui lòng đăng nhập để mua hàng"),
-            backgroundColor: Colors.orange,
-          ),
-        );
-        return;
-      }
-
-      // Lấy SharedPreferences
-      final prefs = await SharedPreferences.getInstance();
-      final cartKey = 'cart_$userId'; // Mỗi khách hàng có 1 giỏ riêng
-
-      // Lấy giỏ hàng hiện tại (nếu có)
-      List<Map<String, dynamic>> cart = [];
-      final existingData = prefs.getString(cartKey);
-      if (existingData != null) {
-        cart = List<Map<String, dynamic>>.from(json.decode(existingData));
-      }
-
-      // Lấy thông tin sản phẩm
-      final productId = sanPham['IdSanPham'] ?? sanPham['id'] ?? '';
-      if (productId.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Không tìm thấy ID sản phẩm!"),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
-
-      // ✅ Xử lý khuyến mãi (nếu có)
-      String? idKhuyenMai = sanPham["IdKhuyenMai"]?.toString();
-      Map<String, dynamic>? km = idKhuyenMai != null && idKhuyenMai.isNotEmpty
-          ? _getKhuyenMaiForProduct(idKhuyenMai)
-          : null;
-
-      double phanTramGiam = 0;
-      var giamRaw = km?["PhanTramGiam"];
-      if (giamRaw is int) phanTramGiam = giamRaw.toDouble();
-      else if (giamRaw is double) phanTramGiam = giamRaw;
-      else if (giamRaw is String) phanTramGiam = double.tryParse(giamRaw) ?? 0;
-
-      double giaGoc = 0;
-      var giaRaw = sanPham["Gia"];
-      if (giaRaw is int) giaGoc = giaRaw.toDouble();
-      else if (giaRaw is double) giaGoc = giaRaw;
-      else if (giaRaw is String) giaGoc = double.tryParse(giaRaw) ?? 0;
-
-      // ✅ Tính giá sau giảm
-      double giaSauGiam = _calculateDiscountedPrice(giaGoc, phanTramGiam);
-
-      // ✅ Kiểm tra xem sản phẩm đã tồn tại trong giỏ chưa
-      int index = cart.indexWhere((item) => item['IdSanPham'] == productId);
-
-      if (index != -1) {
-        // Nếu có rồi -> tăng số lượng
-        cart[index]['SoLuong'] = (cart[index]['SoLuong'] ?? 1) + 1;
-      } else {
-        // Nếu chưa có -> thêm mới
-        cart.add({
-          'IdSanPham': productId,
-          'TenSanPham': sanPham['TenSanPham'] ?? '',
-          'HinhAnh': sanPham['HinhAnh'] ?? '',
-          'GiaGoc': giaGoc,
-          'GiaSauGiam': giaSauGiam,
-          'PhanTramGiam': phanTramGiam,
-          'IdKhuyenMai': idKhuyenMai,
-          'SoLuong': 1,
-        });
-      }
-
-      // ✅ Lưu giỏ hàng mới vào SharedPreferences
-      await prefs.setString(cartKey, json.encode(cart));
-
-      // ✅ Thông báo thành công
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Đã thêm vào giỏ hàng tạm!"),
-          backgroundColor: Colors.pinkAccent,
-        ),
-      );
-    } catch (e) {
-      print("❌ Lỗi khi thêm vào giỏ hàng: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Lỗi khi thêm sản phẩm vào giỏ: $e"),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-
-  Future<void> clearCart() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('cart_${widget.idKhachHang}');
-    print("🧹 Đã xóa giỏ hàng tạm để cập nhật dữ liệu mới!");
-  }
-
-
-  Future<void> _fixMissingKhuyenMaiField() async {
-    final firestore = FirebaseFirestore.instance;
-    final sanPhamSnapshot = await firestore.collection("sanpham").get();
-
-    WriteBatch batch = firestore.batch();
-
-    for (var doc in sanPhamSnapshot.docs) {
-      final data = doc.data();
-
-      // Nếu document không có key "IdKhuyenMai" thì thêm vào
-      if (!data.containsKey("IdKhuyenMai")) {
-        batch.update(doc.reference, {"IdKhuyenMai": ""});
-        print("✅ Đã thêm IdKhuyenMai rỗng cho: ${doc.id}");
-      }
-    }
-
-    await batch.commit();
-    print("🎉 Hoàn tất cập nhật các sản phẩm thiếu IdKhuyenMai.");
-  }
-
 
   @override
   void dispose() {
@@ -241,70 +116,94 @@ class _HomeUIPageState extends State<HomePage> {
     super.dispose();
   }
 
-  //ánh xạ khuyến mãi
   Map<String, dynamic>? _getKhuyenMaiForProduct(String idKhuyenMai) {
     try {
-      return _khuyenMaiDocs.firstWhere(
-            (km) => km.id == idKhuyenMai,
-      ).data() as Map<String, dynamic>;
-    } catch (e) {
+      return _khuyenMaiDocs
+          .firstWhere((km) => km.id == idKhuyenMai)
+          .data() as Map<String, dynamic>;
+    } catch (_) {
       return null;
     }
   }
 
-
-  Widget _getPage(int index) {
-    switch (index) {
-      case 0:
-        return _buildHomeContent();
-
-      case 1:
-        return CartPage(
-          idKhachHang: widget.idKhachHang,
-          userData: widget.userData,
-        );
-
-      case 2:
-      // return OrderHistoryPage(idKhachHang: widget.idKhachHang, userData: widget.userData,);
-        return ChatScreen();
-      case 3:
-
-        return AccountPage(
-          idKhachHang: widget.idKhachHang,
-          userData: widget.userData,
-        );
-      default:
-        return _buildHomeContent();
-
-    }
+  double _calculateDiscountedPrice(double originalPrice, double discountPercent) {
+    return discountPercent > 0
+        ? originalPrice * (1 - discountPercent / 100)
+        : originalPrice;
   }
 
+  Future<void> _addToCart(Map<String, dynamic> sanPham) async {
+    final prefs = await SharedPreferences.getInstance();
+    final cartKey = 'cart_${widget.idKhachHang}';
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: _getPage(_selectedIndex),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        selectedItemColor: Colors.pink,
-        unselectedItemColor: Colors.grey,
-        onTap: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Trang chủ"),
-          BottomNavigationBarItem(icon: Icon(Icons.category), label: "Danh mục"),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.shopping_cart), label: "Giỏ hàng"),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Cá nhân"),
+    List<Map<String, dynamic>> cart = [];
+    final existingData = prefs.getString(cartKey);
+    if (existingData != null) {
+      cart = List<Map<String, dynamic>>.from(json.decode(existingData));
+    }
+
+    final productId = sanPham['IdSanPham'] ?? '';
+    int index = cart.indexWhere((item) => item['IdSanPham'] == productId);
+
+    if (index != -1) {
+      cart[index]['SoLuong'] = (cart[index]['SoLuong'] ?? 1) + 1;
+    } else {
+      cart.add({...sanPham, 'SoLuong': 1});
+    }
+
+    await prefs.setString(cartKey, json.encode(cart));
+
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text("Đã thêm vào giỏ hàng tạm!"),
+      backgroundColor: Colors.pinkAccent,
+    ));
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      color: Colors.pinkAccent,
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        children: [
+          Expanded(
+            child: InkWell(
+              borderRadius: BorderRadius.circular(25),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => SearchPage(allProducts: _allProducts, idKhachHang: widget.idKhachHang,)),
+                );
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(25),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  children: const [
+                    Icon(Icons.search, color: Colors.grey),
+                    SizedBox(width: 8),
+                    Text(
+                      "Ba mẹ muốn tìm gì...",
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          const CircleAvatar(
+            backgroundColor: Colors.white,
+            child: Icon(Icons.notifications_none, color: Colors.pink),
+          ),
         ],
       ),
     );
   }
 
-  // Trang chủ
   Widget _buildHomeContent() {
     return SafeArea(
       child: SingleChildScrollView(
@@ -318,37 +217,6 @@ class _HomeUIPageState extends State<HomePage> {
             _buildProductGrid(),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildSearchBar() {
-    return Container(
-      color: Colors.pinkAccent,
-      padding: const EdgeInsets.all(12),
-      child: Row(
-        children: [
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(25),
-              ),
-              child: TextField(
-                decoration: const InputDecoration(
-                  hintText: "Ba mẹ muốn tìm gì...",
-                  prefixIcon: Icon(Icons.search, color: Colors.grey),
-                  border: InputBorder.none,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          CircleAvatar(
-            backgroundColor: Colors.white,
-            child: Icon(Icons.notifications_none, color: Colors.pink),
-          ),
-        ],
       ),
     );
   }
@@ -373,79 +241,68 @@ class _HomeUIPageState extends State<HomePage> {
   }
 
   Widget _buildCategoryList() {
-    return
-      Container(
-        height: 100,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: _loadingDanhMuc
-            ? const Center(child: CircularProgressIndicator())
-            : SizedBox(
-          height: 120, // chiều cao danh mục
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: _danhMucDocs.length,
-            itemBuilder: (context, index) {
-              var doc = _danhMucDocs[index];
-              String ten = doc["Ten"] ?? "Danh mục";
-              String? hinhAnh = doc["HinhAnh"];
+    return Container(
+      height: 100,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: _loadingDanhMuc
+          ? const Center(child: CircularProgressIndicator())
+          : ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: _danhMucDocs.length,
+        itemBuilder: (context, index) {
+          var doc = _danhMucDocs[index];
+          String ten = doc["Ten"] ?? "Danh mục";
+          String? hinhAnh = doc["HinhAnh"];
 
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade200,
-                        borderRadius: BorderRadius.circular(12),
-                        image: (hinhAnh != null && hinhAnh.isNotEmpty)
-                            ? DecorationImage(
-                          image: NetworkImage(hinhAnh),
-                          fit: BoxFit.cover,
-                        )
-                            : null,
-                      ),
-                      child: (hinhAnh == null || hinhAnh.isEmpty)
-                          ? const Icon(Icons.category, color: Colors.pink)
-                          : null,
-                    ),
-                    const SizedBox(height: 6),
-                    SizedBox(
-                      width: 70,
-                      child: Text(
-                        ten,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 12),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Column(
+              children: [
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(12),
+                    image: (hinhAnh != null && hinhAnh.isNotEmpty)
+                        ? DecorationImage(
+                        image: NetworkImage(hinhAnh), fit: BoxFit.cover)
+                        : null,
+                  ),
+                  child: (hinhAnh == null || hinhAnh.isEmpty)
+                      ? const Icon(Icons.category, color: Colors.pink)
+                      : null,
                 ),
-              );
-            },
-          ),
-        ),
-      );
+                const SizedBox(height: 6),
+                SizedBox(
+                  width: 70,
+                  child: Text(
+                    ten,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 12),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 
   Widget _buildFlashSale() {
     return Container(
       color: Colors.pink.shade50,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), // giảm padding
-
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: const [
           Text("FLASH SALE ⚡",
               style: TextStyle(
-                  color: Colors.red,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18)),
-          Text("Kết thúc trong: 06:59:05",
-              style: TextStyle(color: Colors.grey)),
+                  color: Colors.red, fontWeight: FontWeight.bold, fontSize: 18)),
+          Text("Kết thúc trong: 06:59:05", style: TextStyle(color: Colors.grey)),
         ],
       ),
     );
@@ -676,7 +533,39 @@ class _HomeUIPageState extends State<HomePage> {
     );
   }
 
+  Widget _getPage(int index) {
+    switch (index) {
+      case 0:
+        return _buildHomeContent();
+      case 1:
+        return CartPage(
+            idKhachHang: widget.idKhachHang, userData: widget.userData);
+      case 2:
+        return ChatScreen();
+      case 3:
+        return AccountPage(
+            idKhachHang: widget.idKhachHang, userData: widget.userData);
+      default:
+        return _buildHomeContent();
+    }
+  }
 
-
-
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: _getPage(_selectedIndex),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        selectedItemColor: Colors.pinkAccent,
+        unselectedItemColor: Colors.grey,
+        onTap: (index) => setState(() => _selectedIndex = index),
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Trang chủ"),
+          BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: "Giỏ hàng"),
+          BottomNavigationBarItem(icon: Icon(Icons.chat), label: "Chat"),
+          BottomNavigationBarItem(icon: Icon(Icons.account_circle), label: "Tài khoản"),
+        ],
+      ),
+    );
+  }
 }

@@ -1,3 +1,4 @@
+import 'package:appshopsua/admin/ai_reportpage/admin_chat_page.dart';
 import 'package:appshopsua/admin/brand/listbrand.dart';
 import 'package:appshopsua/admin/category/dsdanhmuc_page.dart';
 import 'package:appshopsua/admin/employee/listemployee.dart';
@@ -5,7 +6,6 @@ import 'package:appshopsua/admin/khuyenmai/list_promotion.dart';
 import 'package:appshopsua/admin/order/adminorderpage.dart';
 import 'package:appshopsua/admin/product/listproduct.dart';
 import 'package:appshopsua/admin/revenue/thongke_page.dart';
-import 'package:appshopsua/admin/thongke.dart';
 import 'package:appshopsua/login_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -241,6 +241,22 @@ class _AdminHomePageState extends State<AdminHomePage> {
                 );
               },
 
+            ),
+
+            const Divider(height: 32),
+            _buildDrawerItem(
+              icon: Icons.logout,
+              title: 'Report',
+              index: 10,
+              onTap: () async {
+                await FirebaseAuth.instance.signOut();
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AdminChatPage()),
+                      (route) => false,
+                );
+              },
+              // AIReportPage
             ),
           ],
         ),
