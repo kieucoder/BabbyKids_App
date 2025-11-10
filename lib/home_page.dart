@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:appshopsua/account_page.dart';
+import 'package:appshopsua/account/account_page.dart';
 import 'package:appshopsua/chatbox/chat_screen.dart';
 import 'package:appshopsua/detail_product.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -105,22 +105,111 @@ class _HomeUIPageState extends State<HomePage> {
     }
     return originalPrice;
   }
+  // Future<void> _addToCart(Map<String, dynamic> sanPham) async {
+  //   try {
+  //     final userId = widget.idKhachHang;
+  //
+  //     if (userId == null || userId.isEmpty) {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         const SnackBar(content: Text("Vui lòng đăng nhập để mua hàng")),
+  //       );
+  //       return;
+  //     }
+  //
+  //     // Lấy SharedPreferences
+  //     final prefs = await SharedPreferences.getInstance();
+  //     final cartKey = 'cart_$userId'; // mỗi khách hàng 1 key riêng
+  //
+  //     // Lấy giỏ hiện tại (nếu có)
+  //     List<Map<String, dynamic>> cart = [];
+  //     final existingData = prefs.getString(cartKey);
+  //     if (existingData != null) {
+  //       cart = List<Map<String, dynamic>>.from(json.decode(existingData));
+  //     }
+  //
+  //     // Lấy thông tin sản phẩm
+  //     final productId = sanPham['IdSanPham'] ?? sanPham['id'] ?? '';
+  //     if (productId.isEmpty) {
+  //       print("❌ Không tìm thấy ID sản phẩm!");
+  //       return;
+  //     }
+  //
+  //     // Xử lý khuyến mãi
+  //     String? idKhuyenMai = sanPham["IdKhuyenMai"]?.toString();
+  //     Map<String, dynamic>? km = idKhuyenMai != null && idKhuyenMai.isNotEmpty
+  //         ? _getKhuyenMaiForProduct(idKhuyenMai)
+  //         : null;
+  //
+  //     double phanTramGiam = 0;
+  //     var giamRaw = km?["PhanTramGiam"];
+  //     if (giamRaw is int) phanTramGiam = giamRaw.toDouble();
+  //     else if (giamRaw is double) phanTramGiam = giamRaw;
+  //     else if (giamRaw is String) phanTramGiam = double.tryParse(giamRaw) ?? 0;
+  //
+  //     double giaGoc = 0;
+  //     var giaRaw = sanPham["Gia"];
+  //     if (giaRaw is int) giaGoc = giaRaw.toDouble();
+  //     else if (giaRaw is double) giaGoc = giaRaw;
+  //     else if (giaRaw is String) giaGoc = double.tryParse(giaRaw) ?? 0;
+  //
+  //     double giaSauGiam = _calculateDiscountedPrice(giaGoc, phanTramGiam);
+  //
+  //     // Tìm sản phẩm trong giỏ
+  //     int index = cart.indexWhere((item) => item['IdSanPham'] == productId);
+  //
+  //     if (index != -1) {
+  //       // Cập nhật số lượng
+  //       cart[index]['SoLuong'] = (cart[index]['SoLuong'] ?? 1) + 1;
+  //     } else {
+  //       // Thêm mới
+  //       cart.add({
+  //         'IdSanPham': productId,
+  //         'TenSanPham': sanPham['TenSanPham'] ?? '',
+  //         'HinhAnh': sanPham['HinhAnh'] ?? '',
+  //         'GiaGoc': giaGoc,
+  //         'GiaSauGiam': giaSauGiam,
+  //         'PhanTramGiam': phanTramGiam,
+  //         'IdKhuyenMai': idKhuyenMai,
+  //         'SoLuong': 1,
+  //       });
+  //     }
+  //
+  //     // Lưu lại vào SharedPreferences
+  //     await prefs.setString(cartKey, json.encode(cart));
+  //
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(
+  //         content: Text("Đã thêm vào giỏ hàng tạm!"),
+  //         backgroundColor: Colors.pinkAccent,
+  //       ),
+  //     );
+  //   } catch (e) {
+  //     print("❌ Lỗi khi thêm vào giỏ hàng: $e");
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(content: Text("Lỗi khi thêm sản phẩm vào giỏ: $e")),
+  //     );
+  //   }
+  // }
   Future<void> _addToCart(Map<String, dynamic> sanPham) async {
     try {
       final userId = widget.idKhachHang;
 
+      // Kiểm tra đăng nhập
       if (userId == null || userId.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Vui lòng đăng nhập để mua hàng")),
+          const SnackBar(
+            content: Text("Vui lòng đăng nhập để mua hàng"),
+            backgroundColor: Colors.orange,
+          ),
         );
         return;
       }
 
       // Lấy SharedPreferences
       final prefs = await SharedPreferences.getInstance();
-      final cartKey = 'cart_$userId'; // mỗi khách hàng 1 key riêng
+      final cartKey = 'cart_$userId'; // Mỗi khách hàng có 1 giỏ riêng
 
-      // Lấy giỏ hiện tại (nếu có)
+      // Lấy giỏ hàng hiện tại (nếu có)
       List<Map<String, dynamic>> cart = [];
       final existingData = prefs.getString(cartKey);
       if (existingData != null) {
@@ -130,11 +219,16 @@ class _HomeUIPageState extends State<HomePage> {
       // Lấy thông tin sản phẩm
       final productId = sanPham['IdSanPham'] ?? sanPham['id'] ?? '';
       if (productId.isEmpty) {
-        print("❌ Không tìm thấy ID sản phẩm!");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Không tìm thấy ID sản phẩm!"),
+            backgroundColor: Colors.red,
+          ),
+        );
         return;
       }
 
-      // Xử lý khuyến mãi
+      // ✅ Xử lý khuyến mãi (nếu có)
       String? idKhuyenMai = sanPham["IdKhuyenMai"]?.toString();
       Map<String, dynamic>? km = idKhuyenMai != null && idKhuyenMai.isNotEmpty
           ? _getKhuyenMaiForProduct(idKhuyenMai)
@@ -152,16 +246,17 @@ class _HomeUIPageState extends State<HomePage> {
       else if (giaRaw is double) giaGoc = giaRaw;
       else if (giaRaw is String) giaGoc = double.tryParse(giaRaw) ?? 0;
 
+      // ✅ Tính giá sau giảm
       double giaSauGiam = _calculateDiscountedPrice(giaGoc, phanTramGiam);
 
-      // Tìm sản phẩm trong giỏ
+      // ✅ Kiểm tra xem sản phẩm đã tồn tại trong giỏ chưa
       int index = cart.indexWhere((item) => item['IdSanPham'] == productId);
 
       if (index != -1) {
-        // Cập nhật số lượng
+        // Nếu có rồi -> tăng số lượng
         cart[index]['SoLuong'] = (cart[index]['SoLuong'] ?? 1) + 1;
       } else {
-        // Thêm mới
+        // Nếu chưa có -> thêm mới
         cart.add({
           'IdSanPham': productId,
           'TenSanPham': sanPham['TenSanPham'] ?? '',
@@ -172,22 +267,12 @@ class _HomeUIPageState extends State<HomePage> {
           'IdKhuyenMai': idKhuyenMai,
           'SoLuong': 1,
         });
-
-        // cart.add({
-        //   'IdSanPham': productId,
-        //   'TenSanPham': sanPham['TenSanPham'] ?? '',
-        //   'HinhAnh': sanPham['HinhAnh'] ?? '',
-        //   'Gia': giaSauGiam,
-        //   'GiaGoc': giaGoc,
-        //   'PhanTramGiam': phanTramGiam,
-        //   'IdKhuyenMai': idKhuyenMai,
-        //   'SoLuong': 1,
-        // });
       }
 
-      // Lưu lại vào SharedPreferences
+      // ✅ Lưu giỏ hàng mới vào SharedPreferences
       await prefs.setString(cartKey, json.encode(cart));
 
+      // ✅ Thông báo thành công
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Đã thêm vào giỏ hàng tạm!"),
@@ -197,7 +282,10 @@ class _HomeUIPageState extends State<HomePage> {
     } catch (e) {
       print("❌ Lỗi khi thêm vào giỏ hàng: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Lỗi khi thêm sản phẩm vào giỏ: $e")),
+        SnackBar(
+          content: Text("Lỗi khi thêm sản phẩm vào giỏ: $e"),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }

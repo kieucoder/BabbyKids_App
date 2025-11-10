@@ -1,5 +1,5 @@
 import 'package:appshopsua/cart/orderhistory.dart';
-import 'package:appshopsua/favorite_page.dart';
+import 'package:appshopsua/account/favorite_page.dart';
 import 'package:appshopsua/login_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -562,38 +562,12 @@ class _AccountPageState extends State<AccountPage> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => FavoritePage(
-                                      idKhachHang: widget.idKhachHang,
-                                    ),
+                                    builder: (context) => YeuThichPage(idKhachHang: widget.idKhachHang),
                                   ),
                                 );
-                                // Navigate to favorites page
-
-                                // Navigator.push(
-                                //   context,
-                                //   MaterialPageRoute(
-                                //     builder: (context) => OrderHistoryPage(idKhachHang: idKhachHang),
-                                //   ),
-                                //
-                                // );
                               },
                               isFavorite: true,
                             ),
-                            // _buildMenuButton(
-                            //   icon: Icons.history,
-                            //   title: 'Lịch sử mua hàng',
-                            //   subtitle: 'Xem tất cả đơn hàng đã mua',
-                            //   onTap: () {
-                            //     // Navigate to order history page
-                            //     Navigator.push(
-                            //       context,
-                            //       MaterialPageRoute(
-                            //         builder: (context) => OrderHistoryPage(idKhachHang: idKhachHang),
-                            //       ),
-                            //
-                            //     );
-                            //   },
-                            // ),
 
                             _buildMenuButton(
                               icon: Icons.history,
